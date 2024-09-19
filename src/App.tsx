@@ -1,7 +1,8 @@
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react'
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui'
 import { clusterApiUrl } from '@solana/web3.js'
-import { Toaster } from 'react-hot-toast'
+import { Toaster } from 'sonner';
+// import { Toaster } from 'react-hot-toast'
 
 // Import Solana wallet styles
 import '@solana/wallet-adapter-react-ui/styles.css'
