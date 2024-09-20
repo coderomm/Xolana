@@ -10,6 +10,7 @@ import { TokenLaunchpad } from './components/TokenLaunchpad'
 import Header from './components/Header'
 import Footer from './components/Footer'
 
+
 function App() {
   // You can also provide the mainnet cluster if you're ready for production
   const network = 'devnet'
@@ -25,7 +26,7 @@ function App() {
             <TokenLaunchpad />
           </main>
           <Footer />
-          <Toaster position="bottom-right" />
+          <Toaster />
         </WalletModalProvider>
       </WalletProvider>
     </ConnectionProvider>

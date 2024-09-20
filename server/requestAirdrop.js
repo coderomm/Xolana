@@ -7,7 +7,7 @@ export default async function handler(req, res) {
   }
 
   const { publicKey } = req.body;
-  const lamports = 1000000000; // Number of lamports to airdrop, e.g., equivalent to 1 SOL
+  const lamports = 1000000000;
 
   try {
     const response = await axios.post(process.env.VITE_API_URL, {
