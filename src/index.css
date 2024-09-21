@@ -6,3 +6,7 @@ body {
     background-color: #09090b;
     color: #fafafa;
 }
+.wallet-adapter-button.wallet-adapter-button-trigger{
+    background-color: #ffffff;
+    color: #09090b;
+}

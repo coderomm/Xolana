@@ -1,19 +1,21 @@
 import React, { useEffect, useState } from 'react'
 import { ed25519 } from '@noble/curves/ed25519';
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { toast } from 'sonner'
+import { Send, Coins, Plus, Copy, CheckIcon, Eye, EyeOff, Signature } from 'lucide-react'
+import { UploadClient } from "@uploadcare/upload-client";
+
+import { createInitializeInstruction, pack } from '@solana/spl-token-metadata';
+import { Buffer } from "buffer";
+import axios, { AxiosError } from 'axios';
+
 import {
-  Connection,
-  clusterApiUrl,
   Keypair,
   PublicKey,
   SystemProgram,
   LAMPORTS_PER_SOL,
   Transaction,
-  sendAndConfirmTransaction,
 } from "@solana/web3.js";
-import { toast } from 'sonner'
-import { Send, Coins, Plus, Copy, CheckIcon, Eye, EyeOff, Signature } from 'lucide-react'
-import { UploadClient } from "@uploadcare/upload-client";
 import {
   TOKEN_2022_PROGRAM_ID,
   createMintToInstruction,
@@ -26,28 +28,14 @@ import {
   ExtensionType,
   getAssociatedTokenAddressSync,
   getTokenMetadata,
-  createMint,
-  getOrCreateAssociatedTokenAccount,
-  mintTo,
   createTransferInstruction
 } from "@solana/spl-token"
-import { createInitializeInstruction, pack } from '@solana/spl-token-metadata';
-import { Buffer } from "buffer";
-import axios, { AxiosError } from 'axios';
 
 window.Buffer = Buffer;
 window.process = process;
 window.Crypto = Crypto;
 const client = new UploadClient({ publicKey: import.meta.env.VITE_UPLOADCARE_PUBLIC_KEY });
 
-// interface TokenData {
-//   name: string;
-//   symbol: string;
-//   decimals: number;
-//   totalSupply: number;
-//   description: string;
-//   image: string;
-// }
 interface Token22 {
   mintAddress: string;
   balance: number;
@@ -64,8 +52,8 @@ export function TokenLaunchpad() {
   const [showWalletBalance, setShowPrivateKey] = useState(false);
   const [walletAddressCopied, setWalletAddressCopied] = useState(false);
   const [activeTab, setActiveTab] = useState('CreateToken')
-  // const [setTokens] = useState<TokenData[]>([]);
   const [token22s, setToken22s] = useState<Token22[]>([]);
+  const [selectedWhatToSend, setSelectedWhatToSend] = useState('sol')
   const [selectedToken, setSelectedToken] = useState('')
   const [recipientAddress, setRecipientAddress] = useState('')
   const [sendAmount, setSendAmount] = useState(0)
@@ -79,7 +67,7 @@ export function TokenLaunchpad() {
       image: ''
     })
   const wallet = useWallet()
-  const { publicKey, signMessage, sendTransaction } = useWallet();
+  const { publicKey, signMessage } = useWallet();
   const { connection } = useConnection();
 
   useEffect(() => {
@@ -100,10 +88,8 @@ export function TokenLaunchpad() {
       const fetchTokens = async () => {
         if (!wallet.publicKey) return;
         try {
-          // setIsFetching(true)
           const tokenMint22 = await connection.getParsedTokenAccountsByOwner(wallet.publicKey, { programId: TOKEN_2022_PROGRAM_ID });
           const userTokens22 = await Promise.all(tokenMint22.value.map(async (account) => {
-            // console.log('account:', account)
             const mintAddress = account.account.data.parsed.info.mint;
             const balance = account.account.data.parsed.info.tokenAmount.uiAmount;
 
@@ -125,8 +111,6 @@ export function TokenLaunchpad() {
           }));
 
           setToken22s(userTokens22);
-          console.log('token22s:', token22s)
-          // setIsFetching(false)
         } catch (error) {
           if (error instanceof Error) {
             toast.error(error.message);
@@ -139,7 +123,7 @@ export function TokenLaunchpad() {
       fetchBalance();
       fetchTokens();
     }
-  }, [wallet, connection])
+  }, [wallet, connection, isCreating])
 
   const fetchTokenAccountPublicKey = async (ownerPublicKey: string, mintAddress: string) => {
     const requestBody = {
@@ -171,7 +155,6 @@ export function TokenLaunchpad() {
 
       // Assuming the first account is the desired one
       const tokenAccountPubKey = data.result.value[0].pubkey;
-      console.log('Token Account Public Key:', tokenAccountPubKey);
 
       // Use this public key for further processing, e.g., initiating a transfer
       return tokenAccountPubKey;
@@ -189,8 +172,8 @@ export function TokenLaunchpad() {
     }
 
     try {
+      setIsSending(true);
       // Fetch the user's token accounts
-      console.log('selectedToken:', selectedToken)
       const sourceTokenAccounts = await connection.getTokenAccountsByOwner(
         publicKey, { programId: TOKEN_2022_PROGRAM_ID }
       );
@@ -200,8 +183,6 @@ export function TokenLaunchpad() {
         toast.error('No Token-22 account found for the wallet');
         return;
       }
-
-      console.log('selectedToken:', selectedToken)
 
       const selectedTokenAccountPubkey = await fetchTokenAccountPublicKey(wallet.publicKey.toString(), selectedToken);
       const publicKeyObject = new PublicKey(selectedTokenAccountPubkey);
@@ -240,7 +221,7 @@ export function TokenLaunchpad() {
         );
 
         const transaction = new Transaction().add(createAssociatedAccountInstruction);
-        await sendTransaction(transaction, connection);
+        await wallet.sendTransaction(transaction, connection);
       } else {
         destinationTokenAccountPubkey = destinationTokenAccount.value[0].pubkey;
       }
@@ -263,7 +244,7 @@ export function TokenLaunchpad() {
       transaction.recentBlockhash = latestBlockHash.blockhash;
       transaction.feePayer = publicKey;
 
-      const signature = await sendTransaction(transaction, connection);
+      const signature = await wallet.sendTransaction(transaction, connection);
       toast.success(`Transaction is Successful! ${signature}`);
       setNewToken({ name: '', symbol: '', decimals: 9, totalSupply: 1000000, description: '', image: '' });
     } catch (error) {
@@ -276,29 +257,30 @@ export function TokenLaunchpad() {
     } finally {
       setIsSending(false);
     }
-
-    // try {
-    //   const transaction = new Transaction();
-    //   transaction.add(SystemProgram.transfer({
-    //     fromPubkey: wallet.publicKey,
-    //     toPubkey: new PublicKey(recipientAddress),
-    //     lamports: sendAmount * LAMPORTS_PER_SOL,
-    //   }));
-
-    //   await wallet.sendTransaction(transaction, connection);
-    //   toast.success(`Sent ${sendAmount} SOL to ${recipientAddress}`)
-    //   setSelectedToken('')
-    //   setRecipientAddress('')
-    //   setSendAmount(0)
-    // } catch (error) {
-    //   console.error('Error sending token:', error)
-    //   toast.error('Failed to send token')
-    // }
   }
-  const requestAirdrop = async () => {
+
+  const sendSol = async () => {
     if (!wallet.publicKey) {
       toast.error('Please connect your wallet')
       return
+    }
+    setIsSending(true);
+    const transaction = new Transaction();
+    transaction.add(SystemProgram.transfer({
+      fromPubkey: wallet.publicKey,
+      toPubkey: new PublicKey(recipientAddress),
+      lamports: sendAmount * LAMPORTS_PER_SOL,
+    }));
+
+    await wallet.sendTransaction(transaction, connection);
+    toast.success("Sent " + sendAmount + " SOL to " + recipientAddress);
+    setIsSending(false);
+  }
+
+  const requestAirdrop = async () => {
+    if (!wallet.publicKey) {
+      toast.error('Please connect your wallet')
+      return;
     }
     if (import.meta.env.VITE_API_CHOICE === '0') {
       try {
@@ -337,6 +319,10 @@ export function TokenLaunchpad() {
   }
 
   const toggleWalletAddressVisibility = () => {
+    if (!wallet.publicKey) {
+      toast.error('Please connect your wallet first.')
+      return;
+    }
     setShowPrivateKey(!showWalletBalance);
   }
 
@@ -359,6 +345,10 @@ export function TokenLaunchpad() {
   };
 
   const handleCopyWalletAddress = () => {
+    if (!wallet.publicKey) {
+      toast.error("Please connect your wallet first.");
+      return;
+    }
     navigator.clipboard.writeText(publicKey?.toString() ?? '');
     setWalletAddressCopied(true)
     setTimeout(() => setWalletAddressCopied(false), 2000)
@@ -489,9 +479,10 @@ export function TokenLaunchpad() {
 
   return (
     <section className="container mx-auto p-4 md:max-w-6xl">
-      <h1 className="text-2xl md:text-4xl font-bold mb-6 text-center">Solana Token Launchpad</h1>
+      <h1 className="text-xl md:text-4xl font-bold mb-2 text-center">Decentralized Application (DApp) </h1>
+      <p className="text-gray-300 mb-6 text-center text-[15px]">Built on the Solana blockchain, designed for token management & crypto wallet integration.</p>
       <div className="pointer-events-none fixed top-1/2 left-1/2 -translate-x-1/2 translate-y-1/2 w-60 h-28 bg-fuchsia-500/80 blur-[120px]"></div>
-      <div className="flex flex-col md:flex-row gap-2 md:gap-10">
+      <div className="flex flex-col md:flex-row gap-10 md:gap-10">
         <div className="flex flex-col rounded-2xl border border-[#434348] p-2 md:p-5 w-full h-max">
           <div className="flex items-center justify-center">
             <h2 className='text-center text-2xl md:text-3xl'>Wallet</h2>
@@ -501,8 +492,8 @@ export function TokenLaunchpad() {
             <div className="flex items-start justify-start gap-5 flex-col w-full p-2 md:px-10">
               <div onClick={handleCopyWalletAddress}
                 className="flex items-center justify-between bg-[#09090b] text-[0.875rem] py-2 px-3 md:p-4 border border-[#27272a] rounded w-full focus-visible:outline-2 focus-visible:outline-transparent focus-visible:ring-2 focus-visible:ring-[#27272a] outline-none">
-                <span className='text-sm font-medium truncate mr-2 cursor-pointer'>{wallet.publicKey?.toString()}</span>
-                <button>
+                <span className='text-sm font-medium truncate mr-2 cursor-pointer'>Address: {wallet.publicKey ? wallet.publicKey?.toString() : 'NoN'}</span>
+                <button disabled={!wallet.connected} className=' disabled:pointer-events-none disabled:opacity-50'>
                   {walletAddressCopied ? (
                     <CheckIcon />
                   ) : (
@@ -511,9 +502,9 @@ export function TokenLaunchpad() {
                 </button>
               </div>
               <div className="flex items-center justify-between bg-[#09090b] text-[0.875rem] py-2 px-3 md:py-2 md:px-4 border border-[#27272a] rounded w-full focus-visible:outline-2 focus-visible:outline-transparent focus-visible:ring-2 focus-visible:ring-[#27272a] outline-none">
-                <span className="text-sm font-medium">Balance: {showWalletBalance ? walletBalance : '••••••••••••••'}</span>
+                <span className="text-sm font-medium">Balance: {wallet.publicKey ? (showWalletBalance ? walletBalance : '•••••••••••••••••••') : 'Non'}</span>
                 <div onClick={toggleWalletAddressVisibility} className="flex items-center">
-                  <button>{showWalletBalance ? <Eye /> : <EyeOff />}</button>
+                  <button disabled={!wallet.connected} className=' disabled:pointer-events-none disabled:opacity-50'>{showWalletBalance ? <Eye /> : <EyeOff />}</button>
                 </div>
               </div>
               <div className="w-full">
@@ -535,15 +526,14 @@ export function TokenLaunchpad() {
                     <Signature />Sign</button>
                 </div>
               </div>
-              <button onClick={requestAirdrop} className="transition-transform transform active:scale-95 flex items-center justify-center gap-2 border text-sm hover:bg-custom-gradient-none bg-white text-[#18181b] hover:opacity-95 font-bold hover:text-black rounded-lg py-2 px-[18px] w-full md:px-10 uppercase text-center">
+              <button disabled={!wallet.connected} onClick={requestAirdrop} className="transition-transform transform active:scale-95 flex items-center justify-center gap-2 border text-sm hover:bg-custom-gradient-none bg-white text-[#18181b] hover:opacity-95 font-bold hover:text-black rounded-lg py-2 px-[18px] w-full md:px-10 uppercase text-center disabled:pointer-events-none disabled:opacity-50">
                 <Coins className="mr-2 h-4 w-4" /> Airdrop 1 SOL
               </button>
             </div>
           </div>
         </div>
         <div className="flex flex-col rounded-2xl border border-[#434348] p-2 md:p-5 w-full">
-          <div className="max-w-full md:w-max mx-auto text-center text-sm md:text-base text-white font-semibold rounded-md flex items-center justify-center
-        overflow-hidden border border-[#434348]">
+          <div className="max-w-full md:w-max mx-auto text-center text-sm md:text-base text-white font-semibold rounded-md flex items-center justify-center overflow-hidden border border-[#434348]">
             <div onClick={() => setActiveTab('CreateToken')} className={`${activeTab === 'CreateToken' ? 'bg-transparent' : 'bg-white/30'} cursor-pointer transition-transform transform active:scale-95 hover:bg-transparent px-5 py-2 backdrop-blur-lg backdrop-saturate-150 shadow-lg border-r border-[#434348]`}>Create Token</div>
             <div onClick={() => setActiveTab('TokenList')} className={`${activeTab === 'TokenList' ? 'bg-transparent' : 'bg-white/30'} cursor-pointer transition-transform transform active:scale-95 hover:bg-transparent px-5 py-2 backdrop-blur-lg backdrop-saturate-150 shadow-lg border-r border-[#434348]`}>Manage Tokens</div>
             <div onClick={() => setActiveTab('ShareToken')} className={`${activeTab === 'ShareToken' ? 'bg-transparent' : 'bg-white/30'} cursor-pointer transition-transform transform active:scale-95 hover:bg-transparent px-5 py-2 backdrop-blur-lg backdrop-saturate-150 shadow-lg`}>Send Tokens</div>
@@ -639,7 +629,7 @@ export function TokenLaunchpad() {
                 <h2 className='text-center text-2xl md:text-3xl'>Token List</h2>
               </div>
               <div className="flex items-start justify-start gap-5 flex-col w-full p-2 md:px-4">
-                <div className="w-full overflow-scroll md:overflow-auto md:max-w-7xl mx-auto md:p-5">
+                <div className="w-full overflow-auto md:overflow-auto md:max-w-7xl mx-auto md:p-5">
                   <table className="w-full text-sm text-left text-white">
                     <thead className="text-xs text-white uppercase bg-white/30">
                       <tr>
@@ -650,7 +640,12 @@ export function TokenLaunchpad() {
                       </tr>
                     </thead>
                     <tbody>
-                      {token22s.map((token) => (
+                      {!wallet.connected &&
+                        <tr className='cursor-pointer transition-transform duration-300 ease-out transform active:scale-95 hover:scale-95 bg-transparent border-b border-[#434348]'>
+                          <td className="p-3 md:px-6 md:py-4 text-center" colSpan={4}>Please connect your wallet first.</td>
+                        </tr>
+                      }
+                      {wallet.publicKey && token22s.map((token) => (
                         <tr key={token.name}
                           className='cursor-pointer transition-transform duration-300 ease-out transform active:scale-95 hover:scale-95 bg-transparent border-b border-[#434348]'>
                           <td className="p-3 md:px-6 md:py-4">
@@ -675,14 +670,24 @@ export function TokenLaunchpad() {
               </div>
               <div className="flex items-start justify-start gap-5 flex-col w-full p-2 md:px-4">
                 <div className="w-full">
-                  <label className='text-sm text-[#a1a1aa]' htmlFor="tokenList">Select Token</label>
-                  <select data-selec={selectedToken} id='tokenList' className='bg-[#09090b] text-[0.875rem] py-2 px-3 border border-[#27272a] rounded w-full focus-visible:outline-2 focus-visible:outline-transparent focus-visible:ring-2 focus-visible:ring-[#27272a] outline-none'
-                    onChange={(e) => setSelectedToken(e.target.value)}>
-                    {token22s.map((token) => (
-                      <option key={token.name} value={token.mintAddress}>{token.name} ({token.mintAddress})</option>
-                    ))}
+                  <label className='text-sm text-[#a1a1aa]' htmlFor="what-to-send">Select what to send?</label>
+                  <select id='what-to-send' className='bg-[#09090b] text-[0.875rem] py-2 px-3 border border-[#27272a] rounded w-full focus-visible:outline-2 focus-visible:outline-transparent focus-visible:ring-2 focus-visible:ring-[#27272a] outline-none'
+                    onChange={(e) => setSelectedWhatToSend(e.target.value)}>
+                    <option value="sol">SOL</option>
+                    <option value="token22">Token 22</option>
                   </select>
                 </div>
+                {selectedWhatToSend === 'token22' &&
+                  <div className="w-full">
+                    <label className='text-sm text-[#a1a1aa]' htmlFor="tokenList">Select Token</label>
+                    <select id='tokenList' className='bg-[#09090b] text-[0.875rem] py-2 px-3 border border-[#27272a] rounded w-full focus-visible:outline-2 focus-visible:outline-transparent focus-visible:ring-2 focus-visible:ring-[#27272a] outline-none'
+                      onChange={(e) => setSelectedToken(e.target.value)}>
+                      {token22s.map((token) => (
+                        <option key={token.name} value={token.mintAddress}>{token.name} ({token.mintAddress})</option>
+                      ))}
+                    </select>
+                  </div>
+                }
                 <div className="w-full">
                   <label className='text-sm text-[#a1a1aa]' htmlFor="recipientAddress">Recipient Address</label>
                   <input
@@ -712,8 +717,8 @@ export function TokenLaunchpad() {
                     required
                   />
                 </div>
-                <button disabled={!selectedToken || !recipientAddress || !sendAmount} type='submit' onClick={sendToken} className="flex items-center justify-center gap-2 border text-sm hover:bg-custom-gradient-none bg-white text-[#18181b] font-bold hover:text-black rounded-lg py-2 px-[18px] w-full md:w-max md:px-10 mx-auto uppercase text-center  disabled:pointer-events-none disabled:opacity-50 transition-all duration-100 ease-out active:scale-95 hover:opacity-90">
-                  <Send />{isSending ? 'Sending Token' : 'Send Token'}
+                <button disabled={!selectedToken || !recipientAddress || !sendAmount} type='submit' onClick={selectedWhatToSend === 'sol' ? sendSol : sendToken} className="flex items-center justify-center gap-2 border text-sm hover:bg-custom-gradient-none bg-white text-[#18181b] font-bold hover:text-black rounded-lg py-2 px-[18px] w-full md:w-max md:px-10 mx-auto uppercase text-center  disabled:pointer-events-none disabled:opacity-50 transition-all duration-100 ease-out active:scale-95 hover:opacity-90">
+                  <Send />{isSending ? (selectedWhatToSend === 'sol' ? 'Sending SOL' : 'Sending Token') : (selectedWhatToSend === 'sol' ? 'Send SOL' : 'Send Token')}
                 </button>
               </div>
             </div>}
