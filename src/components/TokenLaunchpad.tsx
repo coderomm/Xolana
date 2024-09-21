@@ -292,7 +292,7 @@ export function TokenLaunchpad() {
       }
     } else if (import.meta.env.VITE_API_CHOICE === '1') {
       try {
-        const response = await axios.post('http://localhost:5000/request-airdrop', {
+        const response = await axios.post('https://xolana.onrender.com/request-airdrop', {
           publicKey
         }, {
           headers: {
