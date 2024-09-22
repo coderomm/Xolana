@@ -4,10 +4,9 @@ import { clusterApiUrl } from '@solana/web3.js'
 import { Toaster } from 'sonner';
 
 import '@solana/wallet-adapter-react-ui/styles.css'
-import { TokenLaunchpad } from './components/TokenLaunchpad'
-import Header from './components/Header'
-import Footer from './components/Footer'
-
+import Header from './components/ui/Header';
+import Footer from './components/ui/Footer';
+import { Home } from './components/Home';
 
 function App() {
   const network = 'devnet'
@@ -20,7 +19,7 @@ function App() {
         <WalletModalProvider>
           <Header />
           <main>
-            <TokenLaunchpad />
+            <Home />
           </main>
           <Footer />
           <Toaster />

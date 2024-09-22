@@ -9,4 +9,11 @@ body {
 .wallet-adapter-button.wallet-adapter-button-trigger{
     background-color: #ffffff;
     color: #09090b;
+    transition: all 0.3s ease-out;
+    border-radius: 10px;
+}
+.wallet-adapter-button.wallet-adapter-button-trigger:hover{
+    background-color: #fefefe;
+    color: #000;
+    transform: scale(0.99);
 }
