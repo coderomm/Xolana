@@ -11,12 +11,12 @@ const PORT = process.env.PORT || 5000;
 app.use(express.json());
 
 app.use(cors({
-    origin: 'https://xolana.vercel.app',
+    origin: process.env.VITE_FRONTEND_URL,
     credentials: true
 }));
 
 const airdropLimiter = rateLimit({
-    windowMs: 5 * 60 * 1000,  // 5 minutes
+    windowMs: 1 * 60 * 1000,  // 1 minutes
     max: 1,  // Limit each IP to 1 request per window (5 minutes)
     message: 'Too many requests from this IP, please try again after 5 minutes',
     standardHeaders: true,  // Return rate limit info in the `RateLimit-*` headers
