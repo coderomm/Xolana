@@ -5,9 +5,10 @@ import { Buffer } from "buffer";
 
 import { PublicKey } from "@solana/web3.js";
 import { TOKEN_2022_PROGRAM_ID, getTokenMetadata } from "@solana/spl-token"
-import CreateToken from './CreateToken';
+import CreateToken22 from './CreateToken22';
 import SendTokenSol from './SendTokenSol';
 import WalletInfo from './WalletInfo';
+import { ExternalLink } from 'lucide-react';
 
 window.Buffer = Buffer;
 window.process = process;
@@ -22,7 +23,7 @@ interface Token22 {
 }
 
 export function Home() {
-  const [activeTab, setActiveTab] = useState('CreateToken')
+  const [activeTab, setActiveTab] = useState('CreateToken22')
   const [token22s, setToken22s] = useState<Token22[]>([]);
 
   const wallet = useWallet()
@@ -71,7 +72,7 @@ export function Home() {
   }
 
   const handleTokenCreateComplete = () => {
-    fetchTokens();
+    fetchTokens()
   };
 
   return (
@@ -79,17 +80,17 @@ export function Home() {
       <h1 className="text-xl md:text-4xl font-bold mb-2 text-center">Decentralized Application (DApp) </h1>
       <p className="text-gray-300 mb-6 text-center text-[15px]">Built on the Solana blockchain, designed for token management & crypto wallet integration.</p>
       <div className="pointer-events-none fixed top-1/2 left-1/2 -translate-x-1/2 translate-y-1/2 w-60 h-28 bg-fuchsia-500/80 blur-[120px]"></div>
-      <div className="flex flex-col md:flex-row gap-10 md:gap-10">
+      <div className="flex flex-col items-center xl:items-start xl:flex-row gap-10 md:gap-10">
         <WalletInfo />
-        <div className="flex flex-col rounded-2xl border border-[#434348] p-2 md:p-5 w-full">
+        <div className="flex flex-col rounded-2xl border border-[#434348] p-2 xl:p-5 max-w-3xl xl:max-w-full w-full xl:w-1/2">
           <div className="max-w-full md:w-max mx-auto text-center text-sm md:text-base text-white font-semibold rounded-md flex items-center justify-center overflow-hidden border border-[#434348]">
-            <div onClick={() => setActiveTab('CreateToken')} className={`${activeTab === 'CreateToken' ? 'bg-transparent' : 'bg-white/30'} cursor-pointer transition-transform transform active:scale-95 hover:bg-transparent px-5 py-2 backdrop-blur-lg backdrop-saturate-150 shadow-lg border-r border-[#434348]`}>Create Token</div>
+            <div onClick={() => setActiveTab('CreateToken22')} className={`${activeTab === 'CreateToken22' ? 'bg-transparent' : 'bg-white/30'} cursor-pointer transition-transform transform active:scale-95 hover:bg-transparent px-5 py-2 backdrop-blur-lg backdrop-saturate-150 shadow-lg border-r border-[#434348]`}>Create Token</div>
             <div onClick={() => setActiveTab('TokenList')} className={`${activeTab === 'TokenList' ? 'bg-transparent' : 'bg-white/30'} cursor-pointer transition-transform transform active:scale-95 hover:bg-transparent px-5 py-2 backdrop-blur-lg backdrop-saturate-150 shadow-lg border-r border-[#434348]`}>Manage Tokens</div>
             <div onClick={() => setActiveTab('ShareToken')} className={`${activeTab === 'ShareToken' ? 'bg-transparent' : 'bg-white/30'} cursor-pointer transition-transform transform active:scale-95 hover:bg-transparent px-5 py-2 backdrop-blur-lg backdrop-saturate-150 shadow-lg`}>Send Tokens</div>
           </div>
           <div className="border-t border-[#434348] my-5"></div>
 
-          {activeTab && activeTab === 'CreateToken' && <CreateToken onTokenCreateComplete={handleTokenCreateComplete} />}
+          {activeTab && activeTab === 'CreateToken22' && <CreateToken22 onTokenCreateComplete={handleTokenCreateComplete} />}
           {activeTab && activeTab === 'TokenList' &&
             <div className='flex items-center justify-center flex-col gap-5 w-full'>
               <div className='flex items-center justify-center flex-col'>
@@ -104,6 +105,7 @@ export function Home() {
                         <th scope="col" className="p-4 md:px-6 md:py-3">Name</th>
                         <th scope="col" className="p-4 md:px-6 md:py-3">Symbol</th>
                         <th scope="col" className="p-4 md:px-6 md:py-3">Balance</th>
+                        <th scope="col" className="p-4 md:px-6 md:py-3">View More</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -112,19 +114,30 @@ export function Home() {
                           <td className="p-3 md:px-6 md:py-4 text-center" colSpan={4}>Please connect your wallet first.</td>
                         </tr>
                       }
-                      {wallet.publicKey && token22s.map((token) => (
+                      {wallet.publicKey && token22s.length > 0 ? token22s.map((token) => (
                         <tr key={token.name}
                           className='cursor-pointer transition-transform duration-300 ease-out transform active:scale-95 hover:scale-95 bg-transparent border-b border-[#434348]'>
-                          <td className="p-3 md:px-6 md:py-4">
-                            <img src={token.image} alt={token.name} className="h-12 w-12 rounded-full" />
+                          <td className="p-2 md:p-3">
+                            <img src={token.image} alt={token.name} className="w-full h-full rounded-md" />
                           </td>
                           <td className="p-3 md:px-6 md:py-4">
                             <span className="font-bold">{token.name}</span>
                           </td>
-                          <td className="p-3 md:px-6 md:py-4">{token.symbol}</td>
+                          <td className="p-3 md:px-6 md:py-4">
+                            {token.symbol}
+                          </td>
                           <td className="p-3 md:px-6 md:py-4">{token.balance}</td>
+                          <td className="p-3 md:px-6 md:py-4">
+                            <a href={`https://explorer.solana.com/address/${token.mintAddress}?cluster=devnet`} target='_blank'>
+                              <ExternalLink />
+                            </a>
+                          </td>
                         </tr>
-                      ))}
+                      )) : (
+                        <tr className='cursor-pointer transition-transform duration-300 ease-out transform active:scale-95 hover:scale-95 bg-transparent border-b border-[#434348]'>
+                          <td className="p-3 md:px-6 md:py-4 text-center" colSpan={4}>No tokens available</td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -133,6 +146,6 @@ export function Home() {
           {activeTab && activeTab === 'ShareToken' && <SendTokenSol token22s={token22s} />}
         </div>
       </div>
-    </section>
+    </section >
   )
 }

@@ -9,6 +9,8 @@ import Footer from './components/ui/Footer';
 import { Home } from './components/Home';
 import { RecoilRoot } from 'recoil';
 import Sidebar from './components/ui/Sidebar';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import Swap from './components/Swap';
 
 function App() {
   const network = 'devnet'
@@ -20,21 +22,27 @@ function App() {
       <WalletProvider wallets={[]} autoConnect>
         <WalletModalProvider>
           <RecoilRoot>
-            <div className="flex w-full">
-              <div className="w-full">
-                <Sidebar />
-                <Header />
-                <main>
-                  <Home />
-                </main>
-                <Footer />
-                <Toaster />
+            <Router>
+              <div className="flex w-full">
+                <div className="w-full">
+                  <Sidebar />
+                  <Header />
+                  <main className='min-h-[80vh]'>
+                    <Routes>
+                      <Route path='*' element={<Navigate to={'/'} replace />} />
+                      <Route path='/' element={<Home />} />
+                      <Route path='/o/swap' element={<Swap />} />
+                    </Routes>
+                  </main>
+                  <Footer />
+                  <Toaster />
+                </div>
               </div>
-            </div>
+            </Router>
           </RecoilRoot>
         </WalletModalProvider>
       </WalletProvider>
-    </ConnectionProvider>
+    </ConnectionProvider >
   )
 }
 

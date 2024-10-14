@@ -2,9 +2,11 @@ import { useEffect, useRef } from 'react';
 import { useRecoilState } from "recoil";
 import { SideBarOpen } from "../../atoms/sidebarAtom";
 import { CircleX } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const Sidebar = () => {
 
+    const navigate = useNavigate();
     const modalRef = useRef<HTMLDivElement | null>(null);
     const [isOpen, setIsOpen] = useRecoilState(SideBarOpen);
 
@@ -34,8 +36,8 @@ const Sidebar = () => {
             <div className={`relative mr-auto transition-transform duration-300 ease-in-out flex flex-col max-w-[285px] px-2 py-4 h-[100vh] gap-4 bg-[#09090b] justify-between ${isOpen ? "translate-x-0" : "-translate-x-full"}`} ref={modalRef}>
                 <div className="w-full flex flex-col gap-6 items-center mt-20">
                     <div className="w-full flex flex-col gap-3 md:gap-3">
-                        <a href='crypto-kosh.vercel.app' className='rounded cursor-pointer transition-transform transform active:scale-95 hover:bg-white/30 px-5 py-2 backdrop-blur-lg backdrop-saturate-150 shadow-lg border border-[#434348]'>CryptoKosh Wallet</a>
-                        <a href='raydium-liquidity-pool.vercel.app' className='rounded  cursor-pointer transition-transform transform active:scale-95 hover:bg-white/30 px-5 py-2 backdrop-blur-lg backdrop-saturate-150 shadow-lg border border-[#434348]'>Raydium Liquidity Pool</a>
+                        <a href='https://crypto-kosh.vercel.app' target='_blank' className='rounded cursor-pointer transition-transform transform active:scale-95 hover:bg-white/30 px-5 py-2 backdrop-blur-lg backdrop-saturate-150 shadow-lg border border-[#434348]'>CryptoKosh Wallet</a>
+                        <button type='button' onClick={() => navigate('/o/swap')} className='rounded cursor-pointer transition-transform transform active:scale-95 hover:bg-white/30 px-5 py-2 backdrop-blur-lg backdrop-saturate-150 shadow-lg border border-[#434348]'>Swap</button>
                     </div>
                 </div>
                 <div className="border-t border-[#222] py-10">

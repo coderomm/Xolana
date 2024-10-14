@@ -1,5 +1,6 @@
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { UploadClient } from "@uploadcare/upload-client";
+import { PinataSDK } from "pinata-web3";
+
 import { Plus } from "lucide-react";
 import React, { useState } from "react";
 import { toast } from "sonner";
@@ -22,7 +23,7 @@ import {
 interface RequestCreateTokenProps {
     onTokenCreateComplete: () => void;
 }
-const CreateToken:React.FC<RequestCreateTokenProps> = ({onTokenCreateComplete}) => {
+const CreateToken22: React.FC<RequestCreateTokenProps> = ({ onTokenCreateComplete }) => {
     const [isCreating, setIsCreating] = useState(false);
     const [newToken, setNewToken] = useState(
         {
@@ -35,7 +36,11 @@ const CreateToken:React.FC<RequestCreateTokenProps> = ({onTokenCreateComplete}) 
         })
 
     const wallet = useWallet()
-    const client = new UploadClient({ publicKey: import.meta.env.VITE_UPLOADCARE_PUBLIC_KEY });
+    const pinata = new PinataSDK({
+        pinataJwt: import.meta.env.VITE_PINATA_JWT,
+        pinataGateway: import.meta.env.VITE_PINATA_GATEWAY_URL
+    })
+
     const { connection } = useConnection();
 
     const createUploadMetadata = async (name: string, symbol: string, description: string, image: string) => {
@@ -49,8 +54,9 @@ const CreateToken:React.FC<RequestCreateTokenProps> = ({onTokenCreateComplete}) 
         const metadataFile = new File([metadata], "metadata.json", { type: "application/json" });
 
         try {
-            const result = await client.uploadFile(metadataFile);
-            return result.cdnUrl;
+            const result = await pinata.upload.file(metadataFile);
+            return result.IpfsHash;
+
         } catch (error) {
             console.error("Upload failed:", error);
             throw error;
@@ -75,12 +81,14 @@ const CreateToken:React.FC<RequestCreateTokenProps> = ({onTokenCreateComplete}) 
 
             let metadataUri = await createUploadMetadata(newToken.name, newToken.symbol, newToken.description, newToken.image);
             if (!metadataUri) {
-                metadataUri = import.meta.env.VITE_DEFAULT_URI || '';
+                metadataUri = import.meta.env.VITE_DEFAULT_METADATA_URI || '';
                 if (!metadataUri) {
                     toast.error("Failed to create metadata URI.");
                     throw new Error("Metadata URI creation failed and no fallback provided.");
                 }
             }
+
+            metadataUri = `https://${import.meta.env.VITE_PINATA_GATEWAY_URL}/ipfs/${metadataUri}`
 
             const metadata = {
                 mint: mintKeypair.publicKey,
@@ -123,15 +131,13 @@ const CreateToken:React.FC<RequestCreateTokenProps> = ({onTokenCreateComplete}) 
 
             await wallet.sendTransaction(transaction, connection);
 
-            toast.success(`Token mint created at ${mintKeypair.publicKey.toBase58()}`)
+            toast.success(`Token mint created successfully! Mint address: ${mintKeypair.publicKey.toBase58()}`);
             const associatedToken = getAssociatedTokenAddressSync(
                 mintKeypair.publicKey,
                 wallet.publicKey,
                 false,
                 TOKEN_2022_PROGRAM_ID,
             );
-
-            toast.success(associatedToken.toBase58())
 
             const transaction2 = new Transaction().add(
                 createAssociatedTokenAccountInstruction(
@@ -145,10 +151,11 @@ const CreateToken:React.FC<RequestCreateTokenProps> = ({onTokenCreateComplete}) 
             );
 
             await wallet.sendTransaction(transaction2, connection);
+            
+            toast.success(`Mint Successful! 🎉 ${newToken.totalSupply} ${newToken.symbol} has been successfully minted!`);
 
             setNewToken({ name: '', symbol: '', decimals: 9, totalSupply: 1000000, description: '', image: '' });
             setIsCreating(false)
-            toast.success("Token is created Successfully!")
             onTokenCreateComplete();
         } catch (error: unknown) {
             setIsCreating(false)
@@ -194,10 +201,13 @@ const CreateToken:React.FC<RequestCreateTokenProps> = ({onTokenCreateComplete}) 
                         type="number"
                         placeholder="9"
                         value={newToken.decimals}
-                        onChange={(e) => setNewToken({ ...newToken, decimals: parseInt(e.target.value) })}
+                        onChange={(e) => {
+                            if (e.target.value.length <= 1 && /^[1-9]?$/.test(e.target.value)) {
+                                setNewToken({ ...newToken, decimals: parseInt(e.target.value) });
+                            }
+                        }}
                         max={9}
                         min={1}
-                        maxLength={1}
                         required
                     />
                 </div>
@@ -207,11 +217,11 @@ const CreateToken:React.FC<RequestCreateTokenProps> = ({onTokenCreateComplete}) 
                         className='bg-[#09090b] text-[0.875rem] py-2 px-3 border border-[#27272a] rounded w-full focus-visible:outline-2 focus-visible:outline-transparent focus-visible:ring-2 focus-visible:ring-[#27272a] outline-none'
                         id="tokenSupply"
                         type="number"
-                        placeholder="1000000"
+                        placeholder="100000"
                         value={newToken.totalSupply}
-                        onChange={(e) => setNewToken({ ...newToken, totalSupply: parseInt(e.target.value) })}
+                        onChange={(e) => { setNewToken({ ...newToken, totalSupply: parseInt(e.target.value) }) }}
                         min={1}
-                        max={1000}
+                        max={100000}
                         required
                     />
                 </div>
@@ -245,4 +255,4 @@ const CreateToken:React.FC<RequestCreateTokenProps> = ({onTokenCreateComplete}) 
         </div>
     )
 }
-export default CreateToken;
+export default CreateToken22;
