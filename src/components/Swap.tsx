@@ -66,15 +66,14 @@ const Swap = () => {
     // const { connection } = useConnection();
 
     useEffect(() => {
+        fetchJupiterTokens();
         if (wallet.connected && wallet.publicKey) {
-            fetchJupiterTokens();
             fetchUserTokens();
         }
     }, [wallet.publicKey, publicKey, wallet.connected]);
 
     useEffect(() => {
         if (
-            wallet.publicKey &&
             !isNaN(sellingAmount) &&
             sellingAmount > 0 &&
             slippageAmt >= 0 &&
@@ -99,10 +98,10 @@ const Swap = () => {
     }, [buyingSearchTerm, jupiterTokens])
 
     const fetchJupiterTokens = useCallback(async () => {
-        if (!wallet.publicKey) {
-            toast.info('Please connect wallet!')
-            return;
-        };
+        // if (!wallet.publicKey) {
+        //     toast.info('Please connect wallet!')
+        //     return;
+        // };
         try {
             const { data } = await axios.get('https://tokens.jup.ag/tokens?tags=verified');
             const tokens: UserToken[] = data.map((token: { address: string, name: string, symbol: string, logoURI: string, decimals: number }) => ({
@@ -510,13 +509,13 @@ const Swap = () => {
                     {isSellingOpen && (
                         <>
                             <div
-                                className={`${isSellingOpen ? 'flex' : 'hidden'} fixed inset-0 bg-black/50 z-10 top-0 right-0 bottom-0 left-0 w-[95%] md:w-full h-full filter backdrop-blur-sm`}
+                                className={`${isSellingOpen ? 'flex' : 'hidden'} fixed inset-0 bg-black/50 z-10 top-0 right-0 bottom-0 left-0 w-full h-full filter backdrop-blur-sm`}
                                 onClick={() => {
                                     setIsSellingOpen(!isSellingOpen)
                                     setSellingSearchTerm('')
                                 }}
                             ></div>
-                            <div className={`${isSellingOpen ? 'flex' : 'hidden'} flex-col z-20 fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-md h-full max-h-fit lg:h-auto rounded-lg bg-[#0d0410] border border-[#27272a] shadow-lg`}>
+                            <div className={`${isSellingOpen ? 'flex' : 'hidden'} flex-col z-20 fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[95%] md:w-full max-w-md h-full max-h-fit lg:h-auto rounded-lg bg-[#0d0410] border border-[#27272a] shadow-lg`}>
                                 <CircleX className="ms-auto mt-2 me-2 cursor-pointer" onClick={() => setIsSellingOpen(false)} />
                                 <div className="flex items-center w-full p-5">
                                     <input
@@ -564,7 +563,7 @@ const Swap = () => {
                             </div>
                         </>
                     )}
-                    <button onClick={handleSwapSelection} type="button" className="flex items-center justify-center rounded-full bg-white/30 hover:scale-95 transition-transform duration-100 ease-linear max-w-max p-1 mx-auto -mt-6 -mb-6 w-7 h-7 relative z-10 border border-black cursor-pointer"><ArrowUpDown className="w-5" /></button>
+                    <button onClick={handleSwapSelection} type="button" className="flex items-center justify-center rounded-full bg-white/30 hover:scale-95 transition-transform duration-100 ease-linear max-w-max p-1 mx-auto -mt-6 -mb-6 w-7 h-7 relative z-[5] border border-black cursor-pointer"><ArrowUpDown className="w-5" /></button>
                     <div className="w-full border rounded-xl hover:border-white/30 hover:shadow-md hover:shadow-white/30 transition-shadow duration-300 ease-out border-[#27272a] bg-[#09090b] p-3 filter backdrop-blur-sm">
                         <label className='text-lg text-[#a1a1aa] font-bold' htmlFor="tokenSymbol">You're Buying</label>
                         <div className="relative w-full mt-5 flex items-center justify-between">
