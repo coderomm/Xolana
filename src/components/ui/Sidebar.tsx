@@ -38,6 +38,7 @@ const Sidebar = () => {
                     <div className="w-full flex flex-col gap-3 md:gap-3">
                         <a href='https://crypto-kosh.vercel.app' target='_blank' className='rounded cursor-pointer transition-transform transform active:scale-95 hover:bg-white/30 px-5 py-2 backdrop-blur-lg backdrop-saturate-150 shadow-lg border border-[#434348]'>CryptoKosh Wallet</a>
                         <button type='button' onClick={() => navigate('/o/swap')} className='rounded cursor-pointer transition-transform transform active:scale-95 hover:bg-white/30 px-5 py-2 backdrop-blur-lg backdrop-saturate-150 shadow-lg border border-[#434348]'>Swap</button>
+                        <button type='button' onClick={() => navigate('/o/stake')} className='rounded cursor-pointer transition-transform transform active:scale-95 hover:bg-white/30 px-5 py-2 backdrop-blur-lg backdrop-saturate-150 shadow-lg border border-[#434348]'>Stake</button>
                     </div>
                 </div>
                 <div className="border-t border-[#222] py-10">

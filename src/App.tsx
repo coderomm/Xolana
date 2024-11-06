@@ -11,6 +11,7 @@ import { RecoilRoot } from 'recoil';
 import Sidebar from './components/ui/Sidebar';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Swap from './components/Swap';
+import Stake from './components/Stake';
 
 function App() {
   const network = 'devnet'
@@ -32,6 +33,7 @@ function App() {
                       <Route path='*' element={<Navigate to={'/'} replace />} />
                       <Route path='/' element={<Home />} />
                       <Route path='/o/swap' element={<Swap />} />
+                      <Route path='/o/stake' element={<Stake />} />
                     </Routes>
                   </main>
                   <Footer />
