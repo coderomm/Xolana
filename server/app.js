@@ -5,7 +5,7 @@ const cors = require('cors');
 const { v4 } = require('uuid');
 const rateLimit = require('express-rate-limit');
 const { TOKEN_2022_PROGRAM_ID, createMintToInstruction, createAssociatedTokenAccountInstruction, getAssociatedTokenAddress } = require('@solana/spl-token');
-const { PublicKey, Transaction, sendAndConfirmTransaction, Connection, Keypair, } = require("@solana/web3.js")
+const { PublicKey, Transaction, sendAndConfirmTransaction, Connection, Keypair, SystemProgram, LAMPORTS_PER_SOL, } = require("@solana/web3.js")
 const app = express();
 const PORT = process.env.PORT || 5000;
 const bs58 = require('bs58').default;
@@ -58,6 +58,45 @@ app.post('/request-airdrop', airdropLimiter, async (req, res) => {
     }
 });
 
+// Endpoint to initiate staking
+app.post('/stake', async (req, res) => {
+    const { senderPublicKey, amount } = req.body;
+    const connection = new Connection(process.env.RPC_API);
+
+    try {
+        const { blockhash } = await connection.getLatestBlockhash('finalized');
+
+        const transaction = new Transaction({
+            feePayer: new PublicKey(senderPublicKey),
+            recentBlockhash: blockhash,
+        });
+
+        // Add transfer instruction
+        transaction.add(
+            SystemProgram.transfer({
+                fromPubkey: new PublicKey(senderPublicKey),
+                toPubkey: new PublicKey(process.env.STAKE_POOL_ADDRESS),
+                lamports: amount * LAMPORTS_PER_SOL
+            })
+        );
+
+        // Return the transaction for signing
+        const serializedTransaction = transaction.serialize({
+            requireAllSignatures: false,
+            verifySignatures: false
+        });
+
+        res.json({
+            transaction: serializedTransaction.toString('base64'),
+            message: 'Transaction created successfully'
+        });
+    } catch (error) {
+        console.error('Error creating stake transaction:', error);
+        res.status(500).json({ error: 'Failed to create stake transaction' });
+    }
+});
+
+// Helius webhook endpoint
 app.post('/helius', async (req, res) => {
 
     const heliusRes = {
@@ -79,28 +118,30 @@ app.post('/helius', async (req, res) => {
     }
     const connection = new Connection(`${process.env.RPC_API}`);
 
-    const MY_PUBLIC_KEY = process.env.MY_PUBLIC_KEY;
-    const base58PrivateKey = process.env.BASE58_PRIVATE_KEY;
-    const xsolanaMintAddress = process.env.XSOLANA_MINT_ADDRESS;
-
     try {
         console.log('req.body - ', req.body)
-        const incomingTx = req.body.nativeTransfers.find(x => x.toUserAccount === MY_PUBLIC_KEY)
-        if (!incomingTx) {
-            res.json({ message: 'processed.' })
-            return;
+        const accountToTrack = process.env.STAKE_POOL_ADDRESS;
+        const transaction = req.body;
+        const isStakeTransaction = transaction.nativeTransfers?.some(
+            transfer => transfer.toUserAccount === accountToTrack
+        );
+
+        if (!isStakeTransaction) {
+            return res.json({ message: 'Not a stake transaction' });
         }
+
+        const incomingTx = transaction.nativeTransfers.find(
+            t => t.toUserAccount === accountToTrack
+        );
         console.log('incomingTx description - ', incomingTx.description)
-        const senderPublicKey = incomingTx.fromUserAccount;
-        const xsolAmount = incomingTx.amount;
-        const reqType = incomingTx.type;
-        console.log('incomingTx req type - ', reqType)
-        const decodedKey = bs58.decode(base58PrivateKey);
+
+        const decodedKey = bs58.decode(process.env.BASE58_PRIVATE_KEY);
         const myWallet = Keypair.fromSecretKey(decodedKey);
+        const senderPubKey = new PublicKey(incomingTx.fromUserAccount);
+        const xsolAmount = incomingTx.amount;
+        const mintPubKey = new PublicKey(process.env.XSOLANA_MINT_ADDRESS);
 
-        const senderPubKey = new PublicKey(senderPublicKey);
-        const mintPubKey = new PublicKey(xsolanaMintAddress);
-
+        console.log('incomingTx req type - ', incomingTx.type)
         const type = 'received_native_sol';
 
         if (type === "received_native_sol") {
@@ -111,7 +152,9 @@ app.post('/helius', async (req, res) => {
                 TOKEN_2022_PROGRAM_ID
             );
             const ataInfo = await connection.getAccountInfo(senderATA);
-            const transaction = new Transaction();
+            const mintTx = new Transaction();
+            const { blockhash } = await connection.getLatestBlockhash('finalized');
+            mintTx.recentBlockhash = blockhash;
 
             if (!ataInfo) {
                 console.log("Creating new ata for sender...");
@@ -122,7 +165,7 @@ app.post('/helius', async (req, res) => {
                     mintPubKey,
                     TOKEN_2022_PROGRAM_ID
                 );
-                transaction.add(createAtaInstruction);
+                mintTx.add(createAtaInstruction);
             }
 
             const mintToInstruction = createMintToInstruction(
@@ -133,18 +176,18 @@ app.post('/helius', async (req, res) => {
                 [],
                 TOKEN_2022_PROGRAM_ID
             )
-            transaction.add(mintToInstruction)
+            mintTx.add(mintToInstruction)
 
-            const signature = await sendAndConfirmTransaction(connection, transaction, [myWallet]);
+            const signature = await sendAndConfirmTransaction(connection, mintTx, [myWallet]);
             console.log("Transaction successful!");
             console.log("Signature - ", signature);
-            res.status(200).json({ message: 'Transaction successful', signature: signature });
+            res.status(200).json({ message: 'Stake processed successfully', signature: signature });
         } else {
             res.status(200).json({ message: 'Transaction processed' });
         }
     } catch (error) {
-        console.error('Error:', error);
-        res.status(500).json({ error: 'Server error' });
+        console.error('Error processing stake:', error);
+        res.status(500).json({ error: 'Failed to process stake' });
     }
 })
 
