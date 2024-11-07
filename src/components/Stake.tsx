@@ -24,12 +24,11 @@ export default function Stake() {
                 toast.error("Failed to fetch wallet balance");
             }
         };
-        fetchBalance();
-        // Set up balance polling
+        fetchBalance();        
         const interval = setInterval(fetchBalance, 10000);
         return () => clearInterval(interval);
     }, [wallet.connected, wallet.publicKey]);
-
+    
     const handleStakeSol = async () => {
         if (!wallet.connected || !wallet.publicKey) {
             toast.error('Please connect your wallet to proceed');
@@ -55,6 +54,14 @@ export default function Stake() {
                     amount: amountInNumber,
                 }
             );
+            // data.logs.forEach((log: string) => {
+            //     toast.info(log);
+            // });
+            // if (data.message === 'Stake processed successfully') {
+            //     // Handle successful stake
+            // } else {
+            //     // Handle other cases
+            // }
             const transaction = Transaction.from(
                 Buffer.from(data.transaction, 'base64')
             );

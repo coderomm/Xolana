@@ -96,44 +96,25 @@ app.post('/stake', async (req, res) => {
     }
 });
 
-// Helius webhook endpoint
 app.post('/helius', async (req, res) => {
-
-    const heliusRes = {
-        "description": "5DxD5ViWjvRZEkxQEaJHZw2sBsso6xoXx3wGFNKgXUzE sold Fox #7637 to CKs1E69a2e9TmH4mKKLrXFF8kD3ZnwKjoEuXa6sz9WqX for 72 SOL on MAGIC_EDEN.",
-        "feePayer": "CKs1E69a2e9TmH4mKKLrXFF8kD3ZnwKjoEuXa6sz9WqX",
-        "signature": "5nNtjezQMYBHvgSQmoRmJPiXGsPAWmJPoGSa64xanqrauogiVzFyGQhKeFataHGXq51jR2hjbzNTkPUpP787HAmL",
-        "tokenTransfers": [
-            {
-                "fromTokenAccount": "25DTUAd1roBFoUQaxJQByL6Qy2cKQCBp4bK9sgfy9UiM",
-                "fromUserAccount": "1BWutmTvYPwDtmw9abTkS4Ssr8no61spGAvW1X6NDix",
-                "mint": "FdsNQE5EeCe57tbEYCRV1JwW5dzNCof7MUTaGWhmzYqu",
-                "toTokenAccount": "DTYuh7gAGGZg2okM7hdFfU1yMY9LUemCiPyD5Z5GCs6Z",
-                "toUserAccount": "CKs1E69a2e9TmH4mKKLrXFF8kD3ZnwKjoEuXa6sz9WqX",
-                "tokenAmount": 1,
-                "tokenStandard": "NonFungible"
-            }
-        ],
-        "type": "NFT_SALE"
-    }
     const connection = new Connection(`${process.env.RPC_API}`);
 
     try {
-        console.log('req.body - ', req.body)
         const accountToTrack = process.env.STAKE_POOL_ADDRESS;
-        const transaction = req.body;
+        const [transaction] = req.body;
+        console.log('req.body(transaction) - ', transaction);        
+        
         const isStakeTransaction = transaction.nativeTransfers?.some(
             transfer => transfer.toUserAccount === accountToTrack
         );
 
         if (!isStakeTransaction) {
             return res.json({ message: 'Not a stake transaction' });
-        }
+        }        
 
         const incomingTx = transaction.nativeTransfers.find(
             t => t.toUserAccount === accountToTrack
         );
-        console.log('incomingTx description - ', incomingTx.description)
 
         const decodedKey = bs58.decode(process.env.BASE58_PRIVATE_KEY);
         const myWallet = Keypair.fromSecretKey(decodedKey);
@@ -141,10 +122,7 @@ app.post('/helius', async (req, res) => {
         const xsolAmount = incomingTx.amount;
         const mintPubKey = new PublicKey(process.env.XSOLANA_MINT_ADDRESS);
 
-        console.log('incomingTx req type - ', incomingTx.type)
-        const type = 'received_native_sol';
-
-        if (type === "received_native_sol") {
+        if (transaction.type === 'TRANSFER') {
             const senderATA = await getAssociatedTokenAddress(
                 mintPubKey,
                 senderPubKey,
@@ -179,8 +157,6 @@ app.post('/helius', async (req, res) => {
             mintTx.add(mintToInstruction)
 
             const signature = await sendAndConfirmTransaction(connection, mintTx, [myWallet]);
-            console.log("Transaction successful!");
-            console.log("Signature - ", signature);
             res.status(200).json({ message: 'Stake processed successfully', signature: signature });
         } else {
             res.status(200).json({ message: 'Transaction processed' });
