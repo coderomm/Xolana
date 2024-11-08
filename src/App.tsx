@@ -11,7 +11,8 @@ import Footer from './components/ui/Footer';
 import Sidebar from './components/ui/Sidebar';
 import { Home } from './pages/Home';
 import Swap from './pages/Swap';
-import Stake from './pages/Stake';
+// import Stake from './pages/Stake';
+import SolanaStaking from './pages/SolanaStaking';
 
 function App() {
   const network = 'devnet'
@@ -33,8 +34,8 @@ function App() {
                       <Route path='*' element={<Navigate to={'/'} replace />} />
                       <Route path='/' element={<Home />} />
                       <Route path='/o/swap' element={<Swap />} />
-                      <Route path='/o/stake' element={<Stake />} />
-                      {/* <Route path='/o/s' element={<SolanaStaking />} /> */}
+                      {/* <Route path='/o/stake' element={<Stake />} /> */}
+                      <Route path='/o/stake' element={<SolanaStaking />} />
                     </Routes>
                   </main>
                   <Footer />

@@ -124,11 +124,11 @@ app.post('/helius', async (req, res) => {
         );
 
         if (!isStakeTransaction) {
-            wss.clients.forEach((client) => {
-                if (client.readyState === WebSocket.OPEN) {
-                    client.send(JSON.stringify({ type: 'not-a-stake-transaction' }));
-                }
-            });
+            // wss.clients.forEach((client) => {
+            //     if (client.readyState === WebSocket.OPEN) {
+            //         client.send(JSON.stringify({ type: 'not-a-stake-transaction' }));
+            //     }
+            // });
             return res.json({ message: 'Not a stake transaction' });
         }
 
@@ -136,11 +136,11 @@ app.post('/helius', async (req, res) => {
             t => t.toUserAccount === accountToTrack
         );
 
-        wss.clients.forEach((client) => {
-            if (client.readyState === WebSocket.OPEN) {
-                client.send(JSON.stringify({ type: 'log', message: `Tx - ${incomingTx?.description}` }));
-            }
-        });
+        // wss.clients.forEach((client) => {
+        //     if (client.readyState === WebSocket.OPEN) {
+        //         client.send(JSON.stringify({ type: 'log', message: `Tx - ${incomingTx?.description}` }));
+        //     }
+        // });
 
         const decodedKey = bs58.decode(process.env.BASE58_PRIVATE_KEY);
         const myWallet = Keypair.fromSecretKey(decodedKey);
@@ -161,11 +161,11 @@ app.post('/helius', async (req, res) => {
             mintTx.recentBlockhash = blockhash;
 
             if (!ataInfo) {
-                wss.clients.forEach((client) => {
-                    if (client.readyState === WebSocket.OPEN) {
-                        client.send(JSON.stringify({ type: 'log', message: 'Creating new ATA for you...' }));
-                    }
-                });
+                // wss.clients.forEach((client) => {
+                //     if (client.readyState === WebSocket.OPEN) {
+                //         client.send(JSON.stringify({ type: 'log', message: 'Creating new ATA for you...' }));
+                //     }
+                // });
                 const createAtaInstruction = createAssociatedTokenAccountInstruction(
                     myWallet.publicKey,
                     senderATA,
@@ -187,11 +187,11 @@ app.post('/helius', async (req, res) => {
             mintTx.add(mintToInstruction)
 
             const signature = await sendAndConfirmTransaction(connection, mintTx, [myWallet]);
-            wss.clients.forEach((client) => {
-                if (client.readyState === WebSocket.OPEN) {
-                    client.send(JSON.stringify({ type: 'stake-processed-successfully', signature }));
-                }
-            });
+            // wss.clients.forEach((client) => {
+            //     if (client.readyState === WebSocket.OPEN) {
+            //         client.send(JSON.stringify({ type: 'stake-processed-successfully', signature }));
+            //     }
+            // });
             res.status(200).json({ message: 'Stake processed successfully', signature: signature });
         } else {
             wss.clients.forEach((client) => {
