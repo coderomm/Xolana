@@ -1,17 +1,17 @@
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { RecoilRoot } from 'recoil';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react'
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui'
 import { clusterApiUrl } from '@solana/web3.js'
+import '@solana/wallet-adapter-react-ui/styles.css'
 import { Toaster } from 'sonner';
 
-import '@solana/wallet-adapter-react-ui/styles.css'
 import Header from './components/ui/Header';
 import Footer from './components/ui/Footer';
-import { Home } from './components/Home';
-import { RecoilRoot } from 'recoil';
 import Sidebar from './components/ui/Sidebar';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Swap from './components/Swap';
-import Stake from './components/Stake';
+import { Home } from './pages/Home';
+import Swap from './pages/Swap';
+import Stake from './pages/Stake';
 
 function App() {
   const network = 'devnet'
@@ -34,6 +34,7 @@ function App() {
                       <Route path='/' element={<Home />} />
                       <Route path='/o/swap' element={<Swap />} />
                       <Route path='/o/stake' element={<Stake />} />
+                      {/* <Route path='/o/s' element={<SolanaStaking />} /> */}
                     </Routes>
                   </main>
                   <Footer />

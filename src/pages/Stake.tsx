@@ -6,11 +6,59 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 export default function Stake() {
+    const [webSocket, setWebSocket] = useState<WebSocket | null>(null);
     const [amount, setAmount] = useState<string>('');
     const [walletBalance, setWalletBalance] = useState<number>();
     const [isStaking, setIsStaking] = useState(false);
     const connection = new Connection('https://api.devnet.solana.com');
     const wallet = useWallet()
+
+    useEffect(() => {
+        const BACKEND_WS_URL = 'wss://xolana.onrender.com';
+        const ws = new WebSocket(BACKEND_WS_URL);
+        ws.onopen = () => {
+            console.log('WebSocket connection opened');
+            setWebSocket(ws);
+        };
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            switch (data.type) {
+                case 'connected':
+                    console.log('WebSocket connection established');
+                    break;
+                case 'log':
+                    toast.info(data.message);
+                    break;
+                case 'not-a-stake-transaction':
+                    toast.info('Not a stake transaction');
+                    break;
+                case 'stake-processed-successfully':
+                    toast.success(`Stake processed successfully. Signature: ${data.signature}`);
+                    break;
+                case 'transaction-processed':
+                    toast.info('Transaction processed');
+                    break;
+                case 'error-processing-stake':
+                    toast.error(`Error processing stake: ${data.error}`);
+                    break;
+                default:
+                    console.log('Unsupported message type:', data.type);
+            }
+        };
+        if (webSocket) {
+            console.log(webSocket);
+        }
+        ws.onclose = () => {
+            console.log('WebSocket connection closed');
+            setWebSocket(null);
+        };
+
+        return () => {
+            if (ws) {
+                ws.close();
+            }
+        };
+    }, []);
 
     useEffect(() => {
         const fetchBalance = async () => {
@@ -24,11 +72,11 @@ export default function Stake() {
                 toast.error("Failed to fetch wallet balance");
             }
         };
-        fetchBalance();        
+        fetchBalance();
         const interval = setInterval(fetchBalance, 10000);
         return () => clearInterval(interval);
     }, [wallet.connected, wallet.publicKey]);
-    
+
     const handleStakeSol = async () => {
         if (!wallet.connected || !wallet.publicKey) {
             toast.error('Please connect your wallet to proceed');
@@ -52,7 +100,7 @@ export default function Stake() {
                 {
                     senderPublicKey: wallet.publicKey.toString(),
                     amount: amountInNumber,
-                }
+                }, { withCredentials: true }
             );
             // data.logs.forEach((log: string) => {
             //     toast.info(log);
@@ -84,6 +132,7 @@ export default function Stake() {
             setIsStaking(false);
         }
     }
+
     const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
         const validNumber = /^(\d+(\.\d{0,6})?|\.?\d{1,6})$/.test(value);
@@ -92,6 +141,7 @@ export default function Stake() {
             setAmount(value);
         }
     };
+    
     return <>
         <section className="container mx-auto py-4 px-1 md:px-4 md:max-w-6xl relative flex items-center justify-center min-h-[80vh]">
             <div className="flex-col items-center justify-center w-full">

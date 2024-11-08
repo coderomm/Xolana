@@ -6,20 +6,36 @@ const { v4 } = require('uuid');
 const rateLimit = require('express-rate-limit');
 const { TOKEN_2022_PROGRAM_ID, createMintToInstruction, createAssociatedTokenAccountInstruction, getAssociatedTokenAddress } = require('@solana/spl-token');
 const { PublicKey, Transaction, sendAndConfirmTransaction, Connection, Keypair, SystemProgram, LAMPORTS_PER_SOL, } = require("@solana/web3.js")
+const { WebSocketServer, WebSocket } = require('ws');
+const http = require('http');
+
 const app = express();
+const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 const bs58 = require('bs58').default;
-// app.use(cors({
-//     origin: process.env.VITE_FRONTEND_URL,
-//     credentials: true
-// }));
 
 app.use(cors({
-    origin: '*',
+    origin: process.env.FRONTEND_URL || 'https://xolana.vercel.app',
     credentials: true
 }));
 
 app.use(express.json());
+
+const wss = new WebSocketServer({ server  });
+
+wss.on('connection', (ws) => {
+    console.log('WebSocket connection established from:', req.headers.origin);
+
+    ws.send(JSON.stringify({ type: 'connected' }));
+
+    ws.on('error', (error) => {
+        console.error('WebSocket error:', error);
+    });
+
+    ws.on('close', () => {
+        console.log('WebSocket connection closed');
+    });
+});
 
 const airdropLimiter = rateLimit({
     windowMs: 1 * 60 * 1000,  // 1 minutes
@@ -58,7 +74,6 @@ app.post('/request-airdrop', airdropLimiter, async (req, res) => {
     }
 });
 
-// Endpoint to initiate staking
 app.post('/stake', async (req, res) => {
     const { senderPublicKey, amount } = req.body;
     const connection = new Connection(process.env.RPC_API);
@@ -102,19 +117,30 @@ app.post('/helius', async (req, res) => {
     try {
         const accountToTrack = process.env.STAKE_POOL_ADDRESS;
         const [transaction] = req.body;
-        console.log('req.body(transaction) - ', transaction);        
-        
+        console.log('req.body(transaction) - ', transaction);
+
         const isStakeTransaction = transaction.nativeTransfers?.some(
             transfer => transfer.toUserAccount === accountToTrack
         );
 
         if (!isStakeTransaction) {
+            wss.clients.forEach((client) => {
+                if (client.readyState === WebSocket.OPEN) {
+                    client.send(JSON.stringify({ type: 'not-a-stake-transaction' }));
+                }
+            });
             return res.json({ message: 'Not a stake transaction' });
-        }        
+        }
 
         const incomingTx = transaction.nativeTransfers.find(
             t => t.toUserAccount === accountToTrack
         );
+
+        wss.clients.forEach((client) => {
+            if (client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify({ type: 'log', message: `Tx - ${incomingTx?.description}` }));
+            }
+        });
 
         const decodedKey = bs58.decode(process.env.BASE58_PRIVATE_KEY);
         const myWallet = Keypair.fromSecretKey(decodedKey);
@@ -135,7 +161,11 @@ app.post('/helius', async (req, res) => {
             mintTx.recentBlockhash = blockhash;
 
             if (!ataInfo) {
-                console.log("Creating new ata for sender...");
+                wss.clients.forEach((client) => {
+                    if (client.readyState === WebSocket.OPEN) {
+                        client.send(JSON.stringify({ type: 'log', message: 'Creating new ATA for you...' }));
+                    }
+                });
                 const createAtaInstruction = createAssociatedTokenAccountInstruction(
                     myWallet.publicKey,
                     senderATA,
@@ -157,15 +187,36 @@ app.post('/helius', async (req, res) => {
             mintTx.add(mintToInstruction)
 
             const signature = await sendAndConfirmTransaction(connection, mintTx, [myWallet]);
+            wss.clients.forEach((client) => {
+                if (client.readyState === WebSocket.OPEN) {
+                    client.send(JSON.stringify({ type: 'stake-processed-successfully', signature }));
+                }
+            });
             res.status(200).json({ message: 'Stake processed successfully', signature: signature });
         } else {
-            res.status(200).json({ message: 'Transaction processed' });
+            wss.clients.forEach((client) => {
+                if (client.readyState === WebSocket.OPEN) {
+                    client.send(JSON.stringify({ type: 'transaction-processed' }));
+                }
+            });
+            res.status(200).json({ message: 'Transaction processed in else' });
         }
     } catch (error) {
         console.error('Error processing stake:', error);
+        wss.clients.forEach((client) => {
+            if (client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify({ type: 'error-processing-stake', error: error.toString() }));
+            }
+        });
         res.status(500).json({ error: 'Failed to process stake' });
     }
 })
+
+// app.on('upgrade', (request, socket, head) => {
+//     wss.handleUpgrade(request, socket, head, (ws) => {
+//         wss.emit('connection', ws, request);
+//     });
+// });
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

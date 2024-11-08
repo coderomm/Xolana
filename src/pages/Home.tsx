@@ -5,10 +5,10 @@ import { Buffer } from "buffer";
 
 import { PublicKey } from "@solana/web3.js";
 import { TOKEN_2022_PROGRAM_ID, getTokenMetadata } from "@solana/spl-token"
-import CreateToken22 from './CreateToken22';
-import SendTokenSol from './SendTokenSol';
-import WalletInfo from './WalletInfo';
 import { ExternalLink } from 'lucide-react';
+import CreateToken22 from '../components/CreateToken22';
+import SendTokenSol from '../components/SendTokenSol';
+import WalletInfo from '../components/WalletInfo';
 
 window.Buffer = Buffer;
 window.process = process;
