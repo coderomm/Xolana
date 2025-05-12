@@ -1,0 +1,67 @@
+.onboarding-highlight {
+  position: relative;
+  z-index: 10;
+}
+
+.onboarding-highlight::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 0.5rem;
+  border: 2px solid rgba(168, 85, 247, 0.5);
+  animation: pulse 2s infinite;
+  pointer-events: none;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(168, 85, 247, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(168, 85, 247, 0);
+  }
+}
+
+.onboarding-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(2px);
+  z-index: 40;
+  pointer-events: none;
+}
+
+.onboarding-tooltip {
+  position: fixed;
+  z-index: 50;
+  background: linear-gradient(to bottom right, #1f2937, #4c1d95);
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  padding: 1rem;
+  max-width: 20rem;
+  pointer-events: auto;
+}
+
+.onboarding-progress {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.onboarding-progress-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.3);
+  transition: all 0.3s ease;
+}
+
+.onboarding-progress-dot.active {
+  width: 2rem;
+  border-radius: 9999px;
+  background-color: #8b5cf6;
+}
